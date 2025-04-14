@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: example
 spec:
-  replicas: 2  # You can adjust this for scaling
+  replicas: 2  # Adjust replicas for scalability
   selector:
     matchLabels:
       app: example
@@ -14,17 +14,33 @@ spec:
     spec:
       containers:
         - name: example-api
-          image: local/example:latest  # Built inside Minikube
-          imagePullPolicy: Never       # Prevents pulling from external registry
+          image: local/example:latest  # Minikube local image
+          imagePullPolicy: Never  # This ensures Minikube uses the local image
           ports:
             - containerPort: 8080
           resources:
-            requests:
-              cpu: "25m"
-              memory: "10Mi"
             limits:
               cpu: "50m"
               memory: "100Mi"
+            requests:
+              cpu: "25m"
+              memory: "10Mi"
+          readinessProbe:
+            httpGet:
+              path: /  # Ensure the app's root path is healthy
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /  # Ensure the app's root path is alive
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
 ---
 apiVersion: v1
 kind: Service
@@ -35,7 +51,6 @@ spec:
   selector:
     app: example
   ports:
-    - name: http
-      port: 8080
+    - port: 8080
       targetPort: 8080
-      nodePort: 30001  # Optional: access via http://$(minikube ip):30001
+      nodePort: 30001  # Custom NodePort (you can adjust if needed)

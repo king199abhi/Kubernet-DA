@@ -3,7 +3,7 @@ name: CI
 on:
   pull_request:
     branches:
-      - main  # Adjust to your branch name
+      - main  # Adjust this to your branch name if needed
 
 jobs:
   build_and_deploy:
@@ -11,36 +11,44 @@ jobs:
     name: Build and Deploy to Minikube
 
     steps:
+      # Step 1: Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # Step 2: Set up Minikube
       - name: Set up Minikube
         uses: medyagh/setup-minikube@latest
 
+      # Step 3: Start Minikube with the Docker driver
       - name: Start Minikube
         run: |
           minikube start --driver=docker
           kubectl cluster-info
 
+      # Step 4: Apply Kubernetes Deployment and Service
       - name: Apply Kubernetes Deployment and Service
         run: |
-          kubectl apply -f your-deployment-file.yaml
+          kubectl apply -f your-deployment-file.yaml  # Replace with your actual file path
           kubectl wait --for=condition=ready pod -l app=example --timeout=60s
 
+      # Step 5: Expose Service using kubectl port-forward
       - name: Expose Service using port-forward
         run: |
           kubectl port-forward svc/example 8080:8080 &
-          sleep 5  # Give it a little time to set up
+          sleep 5  # Give it some time to set up port-forward
 
+      # Step 6: Get Service URL (accessed via localhost)
       - name: Get Service URL (using port-forward)
         id: get_service_url
         run: |
           echo "Service should be available on localhost:8080"
-        
+
+      # Step 7: Test the service using curl
       - name: Test the service using curl
         run: |
-          curl http://localhost:8080  # This will hit the port-forwarded service
+          curl http://localhost:8080  # Test the service via the forwarded port
 
+      # Step 8: Clean up Minikube
       - name: Clean up Minikube
         run: |
           minikube delete

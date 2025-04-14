@@ -1,53 +1,58 @@
-name: CI
+name: CI for File Push
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-  workflow_dispatch:
-  schedule:
-    # every day at 6am & 6pm pacific
-    - cron: "0 1,13 * * *"
+    branches:
+      - main  # You can replace `main` with any branch you want to track
+    paths:
+      - 'app.py'  # Trigger the workflow only if app.py is changed
+
 jobs:
   build:
-    strategy:
-      matrix:
-          os: [ubuntu-latest, macos-10.15]
-          container-runtime: ['', 'containerd']
-    runs-on: ${{ matrix.os }}
-    continue-on-error: true
+    runs-on: ubuntu-latest  # Run the job on the latest Ubuntu runner
+
     steps:
-      - uses: actions/checkout@v2
-      - name: Install Tools for MacOs
-        if: matrix.os == 'macos-10.15'
+      # Step 1: Checkout the repository
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Step 2: Set up Python (if working with a Python application)
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.8'  # Replace with your desired Python version
+
+      # Step 3: Install dependencies
+      - name: Install dependencies
         run: |
-          brew install docker-machine docker
-          sudo docker --version
-          VBoxManage --version
-          sysctl hw.physicalcpu hw.logicalcpu 
-        continue-on-error: true
-      - name: Install Kubectl
-        uses: azure/setup-kubectl@v1
-      - name: Start minikube
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt  # Ensure you have a requirements.txt
+
+      # Step 4: Run tests (if necessary)
+      - name: Run tests
+        run: |
+          pytest  # Replace with your testing framework (like pytest)
+
+      # Step 5: Additional steps (Build, Deploy, or custom actions)
+      - name: Build or deploy
+        run: |
+          echo "Running build or deployment steps here"
+
+      # Optional: If you're using Minikube or Kubernetes
+      - name: Set up Minikube (optional)
         uses: medyagh/setup-minikube@latest
-        with:
-          container-runtime: ${{ matrix.container-runtime }}
-      - name: Start minikube Again for fun
-        uses: medyagh/setup-minikube@latest
-        with:
-          container-runtime: ${{ matrix.container-runtime }}
-      - name: Try the cluster !
-        run: kubectl get pods -A
-      - name: Use Docker-Env Feature
-        if: matrix.container-runtime == ''
-        run: | 
-          export SHELL=/bin/bash
-          eval $(minikube -p minikube docker-env)
-          docker images
-      - name: Use Podman-Env Feature
-        if: matrix.container-runtime == 'crio'
-        run: | 
-          export SHELL=/bin/bash
-          eval $(minikube -p minikube podman-env)
-          minikube ssh podman images
+
+      - name: Start Minikube (optional)
+        run: |
+          minikube start --driver=docker
+          kubectl cluster-info
+
+      - name: Apply Kubernetes deployment (optional)
+        run: |
+          kubectl apply -f deploy/k8s.yaml  # Replace with your deployment YAML file
+          kubectl wait --for=condition=ready pod -l app=example --timeout=60s
+
+      # Step 6: Clean up after completion (optional)
+      - name: Clean up Minikube (optional)
+        run: |
+          minikube delete

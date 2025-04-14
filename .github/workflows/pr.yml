@@ -5,44 +5,63 @@ on:
     branches:
       - main
     paths:
-      - '**'  # All files
+      - '*'  # Trigger the workflow on any file change in the repo
 
 jobs:
   minikube:
     runs-on: ubuntu-latest
 
     steps:
+      # Step 1: Checkout the repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # Step 2: Set up Minikube
       - name: Set up Minikube
         uses: medyagh/setup-minikube@latest
 
-      - name: Start Minikube with Docker driver
+      # Step 3: Start Minikube with Docker driver
+      - name: Start Minikube
         run: |
           minikube start --driver=docker
-          eval $(minikube docker-env)
+          kubectl cluster-info
+          kubectl get nodes
 
-      - name: Build Docker image inside Minikube
-        run: |
-          docker build -t local/example:latest .
-
+      # Step 4: Apply Kubernetes Deployment
       - name: Apply Kubernetes Deployment
         run: |
           kubectl apply -f deploy/k8s.yaml
-          kubectl wait --for=condition=ready pod -l app=example --timeout=1200s
+          kubectl wait --for=condition=ready pod -l app=example --timeout=1800s  # 30 minutes
 
+      # Step 5: Debug - Check Pod Status
+      - name: Check pod status
+        run: |
+          kubectl get pods -l app=example
+
+      # Step 6: Debug - Check Pod Details
+      - name: Check pod details
+        run: |
+          kubectl describe pod -l app=example
+
+      # Step 7: Debug - Check Kubernetes Events
+      - name: Check Kubernetes events
+        run: |
+          kubectl get events --sort-by='.lastTimestamp'
+
+      # Step 8: Get Service URL
       - name: Get Service URL
         id: get_service_url
         run: |
           SERVICE_URL=$(minikube service example --url)
           echo "Service URL: $SERVICE_URL"
-          echo "url=$SERVICE_URL" >> $GITHUB_OUTPUT
+          echo "::set-output name=url::$SERVICE_URL"
 
+      # Step 9: Test the service with curl
       - name: Test the service with curl
         run: |
           curl ${{ steps.get_service_url.outputs.url }}
 
+      # Step 10: Clean up Minikube
       - name: Clean up Minikube
         run: |
           minikube delete

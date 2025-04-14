@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - '*'  # Trigger the workflow on any file change in the repo
+      - '*'  # Trigger on any file change
 
 jobs:
   minikube:
@@ -20,40 +20,43 @@ jobs:
       - name: Set up Minikube
         uses: medyagh/setup-minikube@latest
 
-      # Step 3: Start Minikube with Docker driver
+      # Step 3: Start Minikube
       - name: Start Minikube
         run: |
           minikube start --driver=docker
           kubectl cluster-info
           kubectl get nodes
 
-      # ✅ Step 4: Point Docker to Minikube's Docker daemon
-      - name: Use Minikube's Docker daemon
+      # ✅ Step 4: Build Docker image inside Minikube
+      - name: Build Docker image inside Minikube
         run: |
           eval $(minikube docker-env)
-
-      # ✅ Step 5: Build the Docker image inside Minikube
-      - name: Build Docker image
-        run: |
           docker build -t local/example:latest .
 
-      # Step 6: Apply Kubernetes Deployment
+      # ✅ Step 5: Apply Kubernetes Deployment
       - name: Apply Kubernetes Deployment
         run: |
           kubectl apply -f deploy/k8s.yaml
-          kubectl wait --for=condition=ready pod -l app=example --timeout=1800s  # 30 minutes
+          kubectl wait --for=condition=ready pod -l app=example --timeout=3600s
 
-      # Step 7: Debug - Check Pod Status
+      # Step 6: Check pod status
       - name: Check pod status
         run: |
           kubectl get pods -l app=example
 
-      # Step 8: Debug - Check Pod Details
+      # Step 7: Check pod details
       - name: Check pod details
         run: |
           kubectl describe pod -l app=example
 
-      # Step 9: Debug - Check Kubernetes Events
+      # Step 8: Show pod logs (if failure)
+      - name: Show pod logs if failed
+        if: failure()
+        run: |
+          POD_NAME=$(kubectl get pods -l app=example -o jsonpath="{.items[0].metadata.name}")
+          kubectl logs $POD_NAME || true
+
+      # Step 9: Check Kubernetes events
       - name: Check Kubernetes events
         run: |
           kubectl get events --sort-by='.lastTimestamp'

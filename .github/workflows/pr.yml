@@ -1,54 +1,53 @@
 name: CI
 
 on:
+  push:
+    branches: [ main ]
   pull_request:
-    branches:
-      - main  # Adjust to the branch you're targeting
-
+    branches: [ main ]
+  workflow_dispatch:
+  schedule:
+    # every day at 6am & 6pm pacific
+    - cron: "0 1,13 * * *"
 jobs:
-  build_and_deploy:
-    runs-on: ubuntu-latest
-    name: Build and Deploy to Minikube
-
+  build:
+    strategy:
+      matrix:
+          os: [ubuntu-latest, macos-10.15]
+          container-runtime: ['', 'containerd']
+    runs-on: ${{ matrix.os }}
+    continue-on-error: true
     steps:
-      # Step 1: Checkout repository
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      # Step 2: Set up Minikube
-      - name: Set up Minikube
+      - uses: actions/checkout@v2
+      - name: Install Tools for MacOs
+        if: matrix.os == 'macos-10.15'
+        run: |
+          brew install docker-machine docker
+          sudo docker --version
+          VBoxManage --version
+          sysctl hw.physicalcpu hw.logicalcpu 
+        continue-on-error: true
+      - name: Install Kubectl
+        uses: azure/setup-kubectl@v1
+      - name: Start minikube
         uses: medyagh/setup-minikube@latest
-
-      # Step 3: Start Minikube
-      - name: Start Minikube
-        run: |
-          minikube start --driver=docker
-          kubectl cluster-info
-
-      # Step 4: Apply Kubernetes Deployment and Service
-      - name: Apply Kubernetes Deployment and Service
-        run: |
-          kubectl apply -f your-deployment-file.yaml  # Replace with your actual file path
-          kubectl wait --for=condition=ready pod -l app=example --timeout=60s
-
-      # Step 5: Expose Service using kubectl port-forward
-      - name: Expose Service using port-forward
-        run: |
-          kubectl port-forward svc/example 8080:8080 &
-          sleep 5  # Give it some time to set up port-forward
-
-      # Step 6: Check the Pod Status
-      - name: Check the Pod Status
-        run: |
-          kubectl get pods -l app=example
-          kubectl describe pod <pod-name>  # Replace <pod-name> with an actual pod name if needed
-
-      # Step 7: Test the service using curl
-      - name: Test the service using curl
-        run: |
-          curl http://localhost:8080  # Test the service via the forwarded port
-
-      # Step 8: Clean up Minikube
-      - name: Clean up Minikube
-        run: |
-          minikube delete
+        with:
+          container-runtime: ${{ matrix.container-runtime }}
+      - name: Start minikube Again for fun
+        uses: medyagh/setup-minikube@latest
+        with:
+          container-runtime: ${{ matrix.container-runtime }}
+      - name: Try the cluster !
+        run: kubectl get pods -A
+      - name: Use Docker-Env Feature
+        if: matrix.container-runtime == ''
+        run: | 
+          export SHELL=/bin/bash
+          eval $(minikube -p minikube docker-env)
+          docker images
+      - name: Use Podman-Env Feature
+        if: matrix.container-runtime == 'crio'
+        run: | 
+          export SHELL=/bin/bash
+          eval $(minikube -p minikube podman-env)
+          minikube ssh podman images

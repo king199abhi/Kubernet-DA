@@ -1,2 +1,3 @@
 Flask==2.0.1
-pytest==6.2.5  # or the latest version of pytest
+gunicorn==20.1.0
+pytest==6.2.5

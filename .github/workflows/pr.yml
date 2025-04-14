@@ -1,28 +1,41 @@
 name: CI
+
 on:
   - pull_request
+
 jobs:
-  job1:
+  build_and_deploy:
     runs-on: ubuntu-latest
-    name: build example and deploy to minikube
+    name: Build and Deploy to Minikube
+
     steps:
-    - uses: actions/checkout@v4
-      with:
-        repository: medyagh/local-dev-example-with-minikube
-    - name: Start minikube
-      uses: medyagh/setup-minikube@latest
-    - name: Try the cluster!
-      run: kubectl get pods -A
-    - name: Build image
-      run: |
-        minikube image build -t local/devex:v1 .
-    - name: Deploy to minikube
-      run:
-        kubectl apply -f deploy/k8s.yaml
-        kubectl wait --for=condition=ready pod -l app=local-devex
-    - name: Test service URLs
-      run: |
-        minikube service list
-        minikube service local-devex-svc --url
-        echo "------------------opening the service------------------"
-        curl $(minikube service local-devex-svc --url)
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Minikube
+        uses: medyagh/setup-minikube@latest
+
+      - name: Start Minikube
+        run: |
+          minikube start --driver=docker
+          kubectl cluster-info
+
+      - name: Apply Kubernetes Deployment and Service
+        run: |
+          kubectl apply -f your-deployment-file.yaml
+          kubectl wait --for=condition=ready pod -l app=example --timeout=60s
+
+      - name: Get Service URL
+        id: get_service_url
+        run: |
+          SERVICE_URL=$(minikube service example --url)
+          echo "Service URL: $SERVICE_URL"
+          echo "::set-output name=url::$SERVICE_URL"
+
+      - name: Test the service using curl
+        run: |
+          curl ${{ steps.get_service_url.outputs.url }}
+
+      - name: Clean up Minikube
+        run: |
+          minikube delete

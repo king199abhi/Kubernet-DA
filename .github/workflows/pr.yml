@@ -3,18 +3,16 @@ name: CI for File Push
 on:
   push:
     branches:
-      - main  # You can replace `main` with any branch you want to track
-    # Remove the paths section to trigger the workflow on any file change
-    # This triggers the workflow when any file is changed in the repository
-    # paths: 
-    #   - 'app.py'  # Removed this line to enable on all file changes
+      - main  # Trigger workflow on push to the `main` branch
+    paths:
+      - '*'  # Trigger on any file change
 
 jobs:
   build:
-    runs-on: ubuntu-latest  # Run the job on the latest Ubuntu runner
+    runs-on: ubuntu-latest  # Use the latest Ubuntu runner
 
     steps:
-      # Step 1: Checkout the repository
+      # Step 1: Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -22,39 +20,25 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.8'  # Replace with your desired Python version
+          python-version: '3.8'
 
-      # Step 3: Install dependencies (including pytest)
+      # Step 3: Install dependencies
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt  # Ensure you have a requirements.txt with pytest listed
+          pip install -r requirements.txt  # Make sure pytest is in requirements.txt
 
-      # Step 4: Run tests with pytest
-      - name: Run tests
+      # Step 4: List files for debugging
+      - name: List files for debugging
         run: |
-          pytest  # Run tests using pytest
+          ls -R  # List all files recursively
 
-      # Step 5: Additional steps (Build, Deploy, or custom actions)
+      # Step 5: Run tests using pytest
+      - name: Run tests using pytest
+        run: |
+          pytest tests/  # Specify the test directory
+
+      # Step 6: Additional steps (Build, Deploy, or custom actions)
       - name: Build or deploy
         run: |
           echo "Running build or deployment steps here"
-
-      # Optional: If you're using Minikube or Kubernetes
-      - name: Set up Minikube (optional)
-        uses: medyagh/setup-minikube@latest
-
-      - name: Start Minikube (optional)
-        run: |
-          minikube start --driver=docker
-          kubectl cluster-info
-
-      - name: Apply Kubernetes deployment (optional)
-        run: |
-          kubectl apply -f deploy/k8s.yaml  # Replace with your deployment YAML file
-          kubectl wait --for=condition=ready pod -l app=example --timeout=60s
-
-      # Step 6: Clean up after completion (optional)
-      - name: Clean up Minikube (optional)
-        run: |
-          minikube delete

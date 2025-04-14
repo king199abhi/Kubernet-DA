@@ -1,7 +1,9 @@
 name: CI
 
 on:
-  - pull_request
+  pull_request:
+    branches:
+      - main  # Adjust to your branch name
 
 jobs:
   build_and_deploy:
@@ -25,16 +27,19 @@ jobs:
           kubectl apply -f your-deployment-file.yaml
           kubectl wait --for=condition=ready pod -l app=example --timeout=60s
 
-      - name: Get Service URL
+      - name: Expose Service using port-forward
+        run: |
+          kubectl port-forward svc/example 8080:8080 &
+          sleep 5  # Give it a little time to set up
+
+      - name: Get Service URL (using port-forward)
         id: get_service_url
         run: |
-          SERVICE_URL=$(minikube service example --url)
-          echo "Service URL: $SERVICE_URL"
-          echo "::set-output name=url::$SERVICE_URL"
-
+          echo "Service should be available on localhost:8080"
+        
       - name: Test the service using curl
         run: |
-          curl ${{ steps.get_service_url.outputs.url }}
+          curl http://localhost:8080  # This will hit the port-forwarded service
 
       - name: Clean up Minikube
         run: |

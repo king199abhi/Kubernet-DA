@@ -3,7 +3,7 @@ name: CI
 on:
   pull_request:
     branches:
-      - main  # Adjust this to your branch name if needed
+      - main  # Adjust to the branch you're targeting
 
 jobs:
   build_and_deploy:
@@ -19,7 +19,7 @@ jobs:
       - name: Set up Minikube
         uses: medyagh/setup-minikube@latest
 
-      # Step 3: Start Minikube with the Docker driver
+      # Step 3: Start Minikube
       - name: Start Minikube
         run: |
           minikube start --driver=docker
@@ -37,11 +37,11 @@ jobs:
           kubectl port-forward svc/example 8080:8080 &
           sleep 5  # Give it some time to set up port-forward
 
-      # Step 6: Get Service URL (accessed via localhost)
-      - name: Get Service URL (using port-forward)
-        id: get_service_url
+      # Step 6: Check the Pod Status
+      - name: Check the Pod Status
         run: |
-          echo "Service should be available on localhost:8080"
+          kubectl get pods -l app=example
+          kubectl describe pod <pod-name>  # Replace <pod-name> with an actual pod name if needed
 
       # Step 7: Test the service using curl
       - name: Test the service using curl

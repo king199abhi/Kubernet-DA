@@ -4,8 +4,10 @@ on:
   push:
     branches:
       - main  # You can replace `main` with any branch you want to track
-    paths:
-      - 'app.py'  # Trigger the workflow only if app.py is changed
+    # Remove the paths section to trigger the workflow on any file change
+    # This triggers the workflow when any file is changed in the repository
+    # paths: 
+    #   - 'app.py'  # Removed this line to enable on all file changes
 
 jobs:
   build:

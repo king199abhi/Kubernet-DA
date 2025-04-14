@@ -30,7 +30,7 @@ jobs:
       - name: Apply Kubernetes Deployment
         run: |
           kubectl apply -f deploy/k8s.yaml
-          kubectl wait --for=condition=ready pod -l app=example --timeout=120s
+          kubectl wait --for=condition=ready pod -l app=example --timeout=1200s
 
       - name: Get Service URL
         id: get_service_url

@@ -22,12 +22,23 @@ jobs:
           driver: docker
           kubernetes-version: 'v1.26.0'
 
+      - name: Add Minikube to PATH
+        run: |
+          echo "$HOME/.minikube/bin" >> $GITHUB_PATH
+          echo "$HOME/bin" >> $GITHUB_PATH
+
       - name: Start Minikube
         run: |
-          minikube start
+          minikube start --driver=docker
           minikube addons enable ingress
 
-      - name: Set Minikube Docker environment
+      - name: Verify Minikube status
+        run: |
+          minikube status
+          kubectl cluster-info
+          kubectl get nodes
+
+      - name: Set Docker environment
         run: |
           eval $(minikube -p minikube docker-env)
           echo "DOCKER_HOST=$(minikube ip):2376" >> $GITHUB_ENV
@@ -35,19 +46,19 @@ jobs:
       - name: Build Docker image
         run: docker build -t example:latest .
 
-      - name: Verify image in Minikube
+      - name: Verify image
         run: |
-          minikube image ls
           docker images
+          minikube image ls
 
-      - name: Apply Kubernetes Deployment
+      - name: Deploy to Kubernetes
         run: |
           kubectl apply -f deploy/k8s.yaml
-          echo "Waiting for deployment rollout..."
-          kubectl rollout status deployment/example --timeout=180s || {
-            echo "Deployment failed to become ready"; 
-            kubectl get pods -l app=example;
-            kubectl describe pod -l app=example;
-            kubectl logs -l app=example;
-            exit 1;
-          }
+          kubectl rollout status deployment/example --timeout=180s
+          kubectl get pods,svc
+
+      - name: Verify deployment
+        run: |
+          kubectl get pods -o wide
+          kubectl describe deployment example
+          kubectl logs -l app=example

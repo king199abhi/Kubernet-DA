@@ -13,10 +13,10 @@ spec:
         app: example
     spec:
       containers:
-        - name: example
-          image: local/example:latest
-          ports:
-            - containerPort: 8080
+      - name: example
+        image: example:latest   # Update the image name here
+        ports:
+        - containerPort: 80
 ---
 apiVersion: v1
 kind: Service

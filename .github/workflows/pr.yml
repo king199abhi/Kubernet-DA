@@ -1,10 +1,9 @@
-name: Build and Deploy to Minikube
+name: CI/CD with Kubernetes and Minikube
 
 on:
   push:
     branches:
       - main
-  pull_request:
 
 jobs:
   build-and-deploy:
@@ -14,18 +13,35 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Setup Minikube
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Set up Minikube
         uses: medyagh/setup-minikube@v0.0.14
 
-      - name: Enable Minikube Docker env
-        run: |
-          eval $(minikube -p minikube docker-env)
+      - name: Enable Minikube Ingress (Optional)
+        run: minikube addons enable ingress
+
+      - name: Set Minikube Docker environment
+        run: eval $(minikube -p minikube docker-env)
 
       - name: Build Docker image inside Minikube
         run: |
           docker build -t example:latest .
+          # Optional: Check if the image is available in Minikube
+          docker images
 
-      - name: Apply Kubernetes manifests
+      - name: Load image into Minikube
+        run: minikube image load example:latest
+
+      - name: Apply Kubernetes Deployment
         run: |
           kubectl apply -f deploy/k8s.yaml
-          kubectl rollout status deployment/example --timeout=180s
+          echo "Waiting for deployment rollout..."
+          kubectl rollout status deployment/example --timeout=180s || {
+            echo "Deployment failed to become ready"; 
+            kubectl get pods -l app=example;
+            kubectl describe pod -l app=example;
+            kubectl logs -l app=example;
+            exit 1;
+          }

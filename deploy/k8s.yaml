@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: example
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: example
@@ -13,9 +13,8 @@ spec:
         app: example
     spec:
       containers:
-        - name: example-container
+        - name: example
           image: local/example:latest
-          imagePullPolicy: Never
           ports:
             - containerPort: 8080
 ---
@@ -28,6 +27,6 @@ spec:
     app: example
   ports:
     - protocol: TCP
-      port: 8080
+      port: 80
       targetPort: 8080
-  type: NodePort
+  type: LoadBalancer

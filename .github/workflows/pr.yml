@@ -42,7 +42,31 @@ jobs:
             exit 1;
           }
 
-      - name: Test Service Accessibility
+      - name: Test Service Accessibility via Port-Forward
         run: |
-          kubectl get svc
-          minikube service example --url
+          POD=$(kubectl get pod -l app=example -o jsonpath="{.items[0].metadata.name}")
+          echo "Forwarding port for pod: $POD"
+          kubectl port-forward pod/$POD 8080:80 &
+          sleep 5
+          curl -v http://localhost:8080 || {
+            echo "❌ App not responding";
+            exit 1;
+          }
+
+      - name: Debug Info
+        if: always()
+        run: |
+          echo "Cluster Info:"
+          kubectl cluster-info
+          
+          echo "All Services:"
+          kubectl get svc -o wide
+          
+          echo "All Pods:"
+          kubectl get pods -o wide
+          
+          echo "Describing example pods:"
+          kubectl describe pods -l app=example
+
+          echo "Logs from app pods:"
+          kubectl logs -l app=example --tail=100

@@ -18,21 +18,27 @@ jobs:
 
       - name: Set up Minikube
         uses: medyagh/setup-minikube@v0.0.14
+        with:
+          driver: docker
+          kubernetes-version: 'v1.26.0'
 
-      - name: Enable Minikube Ingress (Optional)
-        run: minikube addons enable ingress
+      - name: Start Minikube
+        run: |
+          minikube start
+          minikube addons enable ingress
 
       - name: Set Minikube Docker environment
-        run: eval $(minikube -p minikube docker-env)
-
-      - name: Build Docker image inside Minikube
         run: |
-          docker build -t example:latest .
-          # Optional: Check if the image is available in Minikube
-          docker images
+          eval $(minikube -p minikube docker-env)
+          echo "DOCKER_HOST=$(minikube ip):2376" >> $GITHUB_ENV
 
-      - name: Load image into Minikube
-        run: minikube image load example:latest
+      - name: Build Docker image
+        run: docker build -t example:latest .
+
+      - name: Verify image in Minikube
+        run: |
+          minikube image ls
+          docker images
 
       - name: Apply Kubernetes Deployment
         run: |

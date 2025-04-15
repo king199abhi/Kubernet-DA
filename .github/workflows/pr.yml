@@ -10,37 +10,26 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Checkout the code
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Set up Docker Buildx (necessary for multi-platform builds)
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      # Set up Minikube (using a custom action to set up Minikube)
       - name: Set up Minikube
         uses: medyagh/setup-minikube@v0.0.14
 
-      # Enable Ingress in Minikube (optional step)
       - name: Enable Minikube Ingress (Optional)
         run: minikube addons enable ingress
 
-      # Set Minikube Docker environment
-      - name: Set Docker environment to Minikube
-        run: eval $(minikube -p minikube docker-env)
-
-      # Build the Docker image using Minikube's Docker environment
       - name: Build Docker image
         run: |
-          docker build -t example:latest .
+          docker build -t local/example:latest .
 
-      # Load the image into Minikube
-      - name: Load image into Minikube
+      - name: Load Docker image into Minikube
         run: |
-          minikube image load example:latest
+          minikube image load local/example:latest
 
-      # Apply Kubernetes Deployment YAML file
       - name: Apply Kubernetes Deployment
         run: |
           kubectl apply -f deploy/k8s.yaml
@@ -53,19 +42,17 @@ jobs:
             exit 1;
           }
 
-      # Test Service Accessibility via Port-Forward
       - name: Test Service Accessibility via Port-Forward
         run: |
           POD=$(kubectl get pod -l app=example -o jsonpath="{.items[0].metadata.name}")
           echo "Forwarding port for pod: $POD"
-          kubectl port-forward pod/$POD 8080:80 & 
-          sleep 5
+          kubectl port-forward pod/$POD 8080:80 &  # Run port-forward in the background
+          sleep 5  # Wait for port-forwarding to establish
           curl -v http://localhost:8080 || {
             echo "❌ App not responding";
             exit 1;
           }
 
-      # Debugging info
       - name: Debug Info
         if: always()
         run: |

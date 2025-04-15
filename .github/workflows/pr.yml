@@ -13,9 +13,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-
       - name: Set up Minikube
         uses: medyagh/setup-minikube@v0.0.14
         with:
@@ -27,21 +24,10 @@ jobs:
           minikube start --driver=docker
           minikube addons enable ingress
 
-      - name: Configure Docker environment
-        run: |
-          minikube docker-env | tee docker-env.sh
-          source docker-env.sh
-          echo "DOCKER_TLS_VERIFY=$(grep DOCKER_TLS_VERIFY docker-env.sh | cut -d'=' -f2)" >> $GITHUB_ENV
-          echo "DOCKER_HOST=$(grep DOCKER_HOST docker-env.sh | cut -d'=' -f2)" >> $GITHUB_ENV
-          echo "DOCKER_CERT_PATH=$(grep DOCKER_CERT_PATH docker-env.sh | cut -d'=' -f2)" >> $GITHUB_ENV
-          cat docker-env.sh
-
       - name: Build Docker image
-        run: |
-          docker build -t example:latest .
-          docker images
+        run: minikube image build -t example:latest .
 
-      - name: Verify image in Minikube
+      - name: Verify image
         run: minikube image ls
 
       - name: Deploy to Kubernetes

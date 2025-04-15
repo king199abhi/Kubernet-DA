@@ -1,9 +1,10 @@
-name: CI/CD with Kubernetes and Minikube
+name: Build and Deploy to Minikube
 
 on:
   push:
     branches:
       - main
+  pull_request:
 
 jobs:
   build-and-deploy:
@@ -13,70 +14,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-
-      - name: Set up DockerHub Credentials
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.king199abhi }}  # Add DockerHub credentials in GitHub secrets
-          password: ${{ secrets.9944718462@Rr }}
-
-      - name: Build Docker image
-        run: |
-          docker build -t ${{ secrets.king199abhi}}/example:latest .  # Tagging image with your DockerHub username
-
-      - name: Push Docker image to DockerHub
-        run: |
-          docker push ${{ secrets.king199abhi }}/example:latest  # Push the image to DockerHub
-
-      - name: Set up Minikube
+      - name: Setup Minikube
         uses: medyagh/setup-minikube@v0.0.14
 
-      - name: Enable Minikube Ingress (Optional)
-        run: minikube addons enable ingress
-
-      - name: Pull Docker image in Minikube
+      - name: Enable Minikube Docker env
         run: |
-          minikube ssh -- "docker pull ${{ secrets.king199abhi }}/example:latest"  # Pull the image into Minikube
+          eval $(minikube -p minikube docker-env)
 
-      - name: Apply Kubernetes Deployment
+      - name: Build Docker image inside Minikube
+        run: |
+          docker build -t example:latest .
+
+      - name: Apply Kubernetes manifests
         run: |
           kubectl apply -f deploy/k8s.yaml
-          echo "Waiting for deployment rollout..."
-          kubectl rollout status deployment/example --timeout=180s || {
-            echo "Deployment failed to become ready"; 
-            kubectl get pods -l app=example;
-            kubectl describe pod -l app=example;
-            kubectl logs -l app=example;
-            exit 1;
-          }
-
-      - name: Test Service Accessibility via Port-Forward
-        run: |
-          POD=$(kubectl get pod -l app=example -o jsonpath="{.items[0].metadata.name}")
-          echo "Forwarding port for pod: $POD"
-          kubectl port-forward pod/$POD 8080:80 &  # Run port-forward in the background
-          sleep 5  # Wait for port-forwarding to establish
-          curl -v http://localhost:8080 || {
-            echo "❌ App not responding";
-            exit 1;
-          }
-
-      - name: Debug Info
-        if: always()
-        run: |
-          echo "Cluster Info:"
-          kubectl cluster-info
-          
-          echo "All Services:"
-          kubectl get svc -o wide
-          
-          echo "All Pods:"
-          kubectl get pods -o wide
-          
-          echo "Describing example pods:"
-          kubectl describe pods -l app=example
-          
-          echo "Logs from app pods:"
-          kubectl logs -l app=example --tail=100
+          kubectl rollout status deployment/example --timeout=180s

@@ -14,7 +14,8 @@ spec:
     spec:
       containers:
       - name: example
-        image: example:latest   # Update the image name here
+        image: example:latest
+        imagePullPolicy: Never  # This is crucial for local Minikube deployments
         ports:
         - containerPort: 80
 ---
@@ -28,5 +29,5 @@ spec:
   ports:
     - protocol: TCP
       port: 80
-      targetPort: 8080
+      targetPort: 80
   type: LoadBalancer
